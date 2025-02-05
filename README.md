@@ -1,62 +1,47 @@
 # JSON Parsing Benchmark
 
-This project benchmarks various JSON parsing libraries in Java using JMH (Java Microbenchmark Harness).
-
-## Libraries Compared
-
-- Jackson (DOM-based)
-- Jackson (Streaming)
-- simdjson-java
-- jsoniter
-- fastjson
+This project benchmarks different JSON parsing approaches using Jackson, focusing on comparing DOM vs Streaming parsing performance.
 
 ## Project Structure
-
 ```
 project/
-├── src/         # Java source code
-└── data/        # Parquet files and benchmark results
-    └── charts/  # Generated performance comparison charts
+├── src/        
+│   └── main/java/  # Source code
+│       └── com/benchmark/
+│           ├── JsonParsingBenchmark.java  # Main benchmark class
+│           ├── DataLoader.java            # DuckDB data loading
+│           └── ResultVisualizer.java      # Performance visualization
+└── data/          
+    ├── input.parquet  # JSON strings in 'Body' column
+    └── results/       # Benchmark outputs
 ```
 
 ## Prerequisites
-
-- Java 11 or higher
+- Java 17 or higher
 - Maven
-- Parquet files with JSON data in the `data/` directory
+- Input Parquet file with JSON data in 'Body' column
 
-## Running the Benchmarks
+## Building and Running
 
-1. Place your Parquet files in the `data/` directory with the following naming convention:
-   - data_1k.parquet
-   - data_10k.parquet
-   - data_100k.parquet
-   - data_1m.parquet
-
-2. Build the project:
+1. Build the project:
 ```bash
 mvn clean package
 ```
 
-3. Run the benchmarks:
+2. Run the benchmarks:
 ```bash
 java -jar target/benchmarks.jar
 ```
 
-The benchmark results will be displayed in the console, and performance comparison charts will be generated in the `data/charts/` directory.
+## Benchmark Details
 
-## Benchmark Configuration
+The project compares two JSON parsing approaches:
+1. DOM Parsing (using JsonNode)
+2. Streaming Parsing (using JsonParser)
 
-- Warmup: 3 iterations, 1 second each
-- Measurement: 5 iterations, 1 second each
-- Fork: 1
-- Mode: Average Time
-- Output: Microseconds
+Operations benchmarked:
+- `isValidJSON`: Validates if input is valid JSON
+- `hasKey`: Searches for a specific key in the JSON
 
-## Adding New Parsers
-
-To add a new JSON parser:
-
-1. Add the dependency to `pom.xml`
-2. Create a new benchmark method in `JsonParserBenchmark.java`
-3. Run the benchmarks to include the new parser in the comparison
+## Results
+Performance results are saved as PNG charts in the `data/results` directory.

@@ -3,8 +3,8 @@ dontinline,*.*_avgt_jmhStub
 dontinline,*.*_sample_jmhStub
 dontinline,*.*_ss_jmhStub
 dontinline,*.*_thrpt_jmhStub
-inline,com/benchmark/json/JsonParserBenchmark.fastjsonParsing
-inline,com/benchmark/json/JsonParserBenchmark.jacksonDomParsing
-inline,com/benchmark/json/JsonParserBenchmark.jacksonStreamingParsing
-inline,com/benchmark/json/JsonParserBenchmark.jsoniterParsing
-inline,com/benchmark/json/JsonParserBenchmark.setup
+inline,com/benchmark/JsonParsingBenchmark.jacksonDomHasJsonKey
+inline,com/benchmark/JsonParsingBenchmark.jacksonDomIsValidJson
+inline,com/benchmark/JsonParsingBenchmark.jacksonStreamingHasJsonKey
+inline,com/benchmark/JsonParsingBenchmark.jacksonStreamingIsValidJson
+inline,com/benchmark/JsonParsingBenchmark.setup
