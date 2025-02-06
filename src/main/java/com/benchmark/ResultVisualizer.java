@@ -3,6 +3,8 @@ package com.benchmark;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.ChartUtils;
+import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryAxis;
 import org.jfree.chart.axis.CategoryLabelPositions;
 import org.jfree.chart.axis.NumberAxis;
@@ -35,9 +37,11 @@ public class ResultVisualizer {
     private static final int CHART_WIDTH = 1600;
     private static final int CHART_HEIGHT = 900;
     private static final Color BACKGROUND_COLOR = new Color(245, 245, 245);
+    private static final Color VALID_COLOR = new Color(46, 139, 87);  // SeaGreen
+    private static final Color INVALID_COLOR = new Color(220, 20, 60);  // Crimson
     private static final Color[] SERIES_COLORS = {
-        new Color(41, 128, 185),  // Blue
-        new Color(192, 57, 43),   // Red
+        VALID_COLOR,  // Blue
+        INVALID_COLOR,   // Red
         new Color(39, 174, 96),   // Green
         new Color(142, 68, 173)   // Purple
     };
@@ -70,16 +74,34 @@ public class ResultVisualizer {
             }
         }
 
+        // Extract validation counts from the first result
+        int validCount = -1;
+        int keyCount = -1;
+        for (RunResult result : results) {
+            String benchmark = result.getParams().getBenchmark();
+            if (benchmark.contains("jacksonDomIsValidJson")) {
+                validCount = (int) result.getPrimaryResult().getScore();
+            } else if (benchmark.contains("jacksonDomHasJsonKey")) {
+                keyCount = (int) result.getPrimaryResult().getScore();
+            }
+        }
+
         // Create and save charts
+        String fullValidationTitle = "JSON Validation Time by Method";
+        String fullKeyCheckTitle = "JSON Key Check Time by Method";
+        if (validCount >= 0 && keyCount >= 0) {
+            fullValidationTitle += String.format(" (Valid: %d, With Key: %d)", validCount, keyCount);
+            fullKeyCheckTitle += String.format(" (Valid: %d, With Key: %d)", validCount, keyCount);
+        }
         createBarChart(datasets.get("validation_time"), 
-            "JSON Validation Time by Method", 
+            fullValidationTitle, 
             resultsDir.resolve("validation_time_bar.png").toString());
         createLineChart(datasets.get("validation_time"),
             "JSON Validation Time Trend",
             resultsDir.resolve("validation_time_line.png").toString());
             
         createBarChart(datasets.get("key_check_time"),
-            "JSON Key Check Time by Method",
+            fullKeyCheckTitle,
             resultsDir.resolve("key_check_time_bar.png").toString());
         createLineChart(datasets.get("key_check_time"),
             "JSON Key Check Time Trend",
@@ -134,6 +156,16 @@ public class ResultVisualizer {
         renderer.setDefaultStroke(new BasicStroke(2.0f));
         for (int i = 0; i < SERIES_COLORS.length; i++) {
             renderer.setSeriesPaint(i, SERIES_COLORS[i]);
+            if (i == 0) {
+                renderer.setSeriesStroke(i, new BasicStroke(2.0f));
+            } else if (i == 1) {
+                renderer.setSeriesStroke(i, new BasicStroke(
+                    2.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 
+                    10.0f, new float[]{10.0f, 5.0f}, 0.0f
+                ));
+            } else {
+                renderer.setSeriesStroke(i, new BasicStroke(2.0f));
+            }
             renderer.setSeriesShape(i, new Ellipse2D.Double(-4.0, -4.0, 8.0, 8.0));
         }
         plot.setRenderer(renderer);

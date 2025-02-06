@@ -12,32 +12,41 @@ import java.util.List;
 
 public class DataLoader {
     private static final Logger logger = LoggerFactory.getLogger(DataLoader.class);
-    private static final String PARQUET_FILE = "data/input.parquet";
+    private static final String VALID_JSON_FILE = "data/100k_valid_json.parquet";
+    private static final String INVALID_JSON_FILE = "data/100k_invalid_json.parquet";
 
-    public static List<String> loadJsonInputs(int count) {
-        List<String> jsonInputs = new ArrayList<>();
+    public static List<String> loadValidJsonInputs(int count) {
+        return loadFromParquet(VALID_JSON_FILE, count);
+    }
+
+    public static List<String> loadInvalidJsonInputs(int count) {
+        return loadFromParquet(INVALID_JSON_FILE, count);
+    }
+
+    private static List<String> loadFromParquet(String file, int count) {
+        List<String> inputs = new ArrayList<>();
         
         try (DuckDBConnection conn = (DuckDBConnection) new DuckDBDriver().connect("jdbc:duckdb:", null)) {
-            // Read only the Body column and ensure it's not null
             String query = String.format(
-                "SELECT Body FROM read_parquet('%s') WHERE Body IS NOT NULL LIMIT %d",
-                PARQUET_FILE, count
+                "SELECT Body FROM read_parquet('%s') LIMIT %d",
+                file, count
             );
             
             ResultSet rs = conn.createStatement().executeQuery(query);
             while (rs.next()) {
-                String json = rs.getString("Body");
-                if (json != null && !json.trim().isEmpty()) {
-                    jsonInputs.add(json);
+                String input = rs.getString("Body");
+                if (input != null && !input.trim().isEmpty()) {
+                    inputs.add(input);
                 }
             }
             
-            logger.info("Successfully loaded {} valid JSON records", jsonInputs.size());
+            logger.info("Loaded {} inputs from {}", inputs.size(), file);
+            
         } catch (SQLException e) {
-            logger.error("Error loading data from Parquet: {}", e.getMessage());
+            logger.error("Error loading data from {}: {}", file, e.getMessage());
             throw new RuntimeException("Failed to load data", e);
         }
         
-        return jsonInputs;
+        return inputs;
     }
 }

@@ -1,47 +1,11 @@
-# JSON Parsing Benchmark
+Now the benchmark is clearly structured with 6 tests:
 
-This project benchmarks different JSON parsing approaches using Jackson, focusing on comparing DOM vs Streaming parsing performance.
-
-## Project Structure
-```
-project/
-├── src/        
-│   └── main/java/  # Source code
-│       └── com/benchmark/
-│           ├── JsonParsingBenchmark.java  # Main benchmark class
-│           ├── DataLoader.java            # DuckDB data loading
-│           └── ResultVisualizer.java      # Performance visualization
-└── data/          
-    ├── input.parquet  # JSON strings in 'Body' column
-    └── results/       # Benchmark outputs
-```
-
-## Prerequisites
-- Java 17 or higher
-- Maven
-- Input Parquet file with JSON data in 'Body' column
-
-## Building and Running
-
-1. Build the project:
-```bash
-mvn clean package
-```
-
-2. Run the benchmarks:
-```bash
-java -jar target/benchmarks.jar
-```
-
-## Benchmark Details
-
-The project compares two JSON parsing approaches:
-1. DOM Parsing (using JsonNode)
-2. Streaming Parsing (using JsonParser)
-
-Operations benchmarked:
-- `isValidJSON`: Validates if input is valid JSON
-- `hasKey`: Searches for a specific key in the JSON
-
-## Results
-Performance results are saved as PNG charts in the `data/results` directory.
+isValidJson tests (both DOM and streaming):
+Test with valid JSON inputs (best case)
+Test with invalid JSON inputs (worst case)
+Uses both Parquet files as source of truth
+Success = parsing all valid JSON and failing all invalid JSON
+hasJsonKey tests (both DOM and streaming):
+Only test with valid JSON inputs
+Checks for common fields in our log data (level and message/msg)
+Reports count of how many entries have these fields
