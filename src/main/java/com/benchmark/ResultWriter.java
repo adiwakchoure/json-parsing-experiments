@@ -21,17 +21,17 @@ public class ResultWriter {
         String resultFile = "data/results/benchmark_results_" + 
                           System.currentTimeMillis() + ".csv";
 
-        // Options opt = new OptionsBuilder()
-        //         .include(JsonParsingBenchmark.class.getSimpleName())
-        //         .resultFormat(ResultFormatType.CSV)
-        //         .result(resultFile)
-        //         .build();
-
         Options opt = new OptionsBuilder()
-            .include(".*fastJson.*") // If you need to specify the parser you want to test
-            .resultFormat(ResultFormatType.CSV)
-            .result(resultFile)
-            .build();
+                .include(JsonParsingBenchmark.class.getSimpleName())
+                .resultFormat(ResultFormatType.CSV)
+                .result(resultFile)
+                .build();
+
+        // Options opt = new OptionsBuilder()
+        //     .include(".*fastJson.*") // If you need to specify the parser you want to test
+        //     .resultFormat(ResultFormatType.CSV)
+        //     .result(resultFile)
+        //     .build();
 
         Collection<RunResult> results = new Runner(opt).run();
         logger.info("Results have been written to {}", resultFile);
