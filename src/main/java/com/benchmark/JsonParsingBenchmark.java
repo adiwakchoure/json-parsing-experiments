@@ -8,20 +8,21 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Fork(value = 1)
-@Warmup(iterations = 3)
-@Measurement(iterations = 5)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@Fork(value = 2)
+@Warmup(iterations = 5, time = 1)
+@Measurement(iterations = 10, time = 1)
+@Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
 public class JsonParsingBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(JsonParsingBenchmark.class);
     private static final int SAMPLE_SIZE = 100000;
     
     private static List<String> validJsonInputs;
     private static List<String> invalidJsonInputs;
-    private static final String jsonKey = "id";
+    private static final String jsonKey = "correlationId";
+    private static final String jsonPath = "$.logger";
     
     static {
         validJsonInputs = DataLoader.loadValidJsonInputs(SAMPLE_SIZE);
@@ -59,6 +60,13 @@ public class JsonParsingBenchmark {
     }
 
     @Benchmark
+    public void jacksonDomParser_GetValue(Blackhole blackhole) {
+        for (String json : validJsonInputs) {
+            blackhole.consume(jacksonDomParser.getJsonValue(json, jsonPath));
+        }
+    }
+
+    @Benchmark
     public void jacksonStreamingParser_ValidInputs(Blackhole blackhole) {
         for (String json : validJsonInputs) {
             blackhole.consume(jacksonStreamingParser.isValidJson(json));
@@ -76,6 +84,13 @@ public class JsonParsingBenchmark {
     public void jacksonStreamingParser_HasKey(Blackhole blackhole) {
         for (String json : validJsonInputs) {
             blackhole.consume(jacksonStreamingParser.hasJsonKey(json, jsonKey));
+        }
+    }
+
+    @Benchmark
+    public void jacksonStreamingParser_GetValue(Blackhole blackhole) {
+        for (String json : validJsonInputs) {
+            blackhole.consume(jacksonStreamingParser.getJsonValue(json, jsonPath));
         }
     }
 
@@ -101,6 +116,13 @@ public class JsonParsingBenchmark {
     }
 
     @Benchmark
+    public void gsonDomParser_GetValue(Blackhole blackhole) {
+        for (String json : validJsonInputs) {
+            blackhole.consume(gsonDomParser.getJsonValue(json, jsonPath));
+        }
+    }
+
+    @Benchmark
     public void gsonStreamingParser_ValidInputs(Blackhole blackhole) {
         for (String json : validJsonInputs) {
             blackhole.consume(gsonStreamingParser.isValidJson(json));
@@ -118,6 +140,13 @@ public class JsonParsingBenchmark {
     public void gsonStreamingParser_HasKey(Blackhole blackhole) {
         for (String json : validJsonInputs) {
             blackhole.consume(gsonStreamingParser.hasJsonKey(json, jsonKey));
+        }
+    }
+
+    @Benchmark
+    public void gsonStreamingParser_GetValue(Blackhole blackhole) {
+        for (String json : validJsonInputs) {
+            blackhole.consume(gsonStreamingParser.getJsonValue(json, jsonPath));
         }
     }
 
@@ -143,6 +172,13 @@ public class JsonParsingBenchmark {
     }
 
     @Benchmark
+    public void fastJsonDomParser_GetValue(Blackhole blackhole) {
+        for (String json : validJsonInputs) {
+            blackhole.consume(fastJsonDomParser.getJsonValue(json, jsonPath));
+        }
+    }
+
+    @Benchmark
     public void fastJsonStreamingParser_ValidInputs(Blackhole blackhole) {
         for (String json : validJsonInputs) {
             blackhole.consume(fastJsonStreamingParser.isValidJson(json));
@@ -164,6 +200,13 @@ public class JsonParsingBenchmark {
     }
 
     @Benchmark
+    public void fastJsonStreamingParser_GetValue(Blackhole blackhole) {
+        for (String json : validJsonInputs) {
+            blackhole.consume(fastJsonStreamingParser.getJsonValue(json, jsonPath));
+        }
+    }
+
+    @Benchmark
     public void jsonIteratorParser_ValidInputs(Blackhole blackhole) {
         for (String json : validJsonInputs) {
             blackhole.consume(jsonIteratorParser.isValidJson(json));
@@ -181,6 +224,13 @@ public class JsonParsingBenchmark {
     public void jsonIteratorParser_HasKey(Blackhole blackhole) {
         for (String json : validJsonInputs) {
             blackhole.consume(jsonIteratorParser.hasJsonKey(json, jsonKey));
+        }
+    }
+
+    @Benchmark
+    public void jsonIteratorParser_GetValue(Blackhole blackhole) {
+        for (String json : validJsonInputs) {
+            blackhole.consume(jsonIteratorParser.getJsonValue(json, jsonPath));
         }
     }
 

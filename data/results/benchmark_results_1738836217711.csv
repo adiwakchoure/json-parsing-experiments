@@ -1,0 +1,4 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.benchmark.JsonParsingBenchmark.jsonIteratorParser_GetValue","avgt",1,20,269063006.225000,16960528.053262,"ns/op"
+"com.benchmark.JsonParsingBenchmark.jsonIteratorParser_HasKey","avgt",1,20,53096363.669395,1889736.293236,"ns/op"
+"com.benchmark.JsonParsingBenchmark.jsonIteratorParser_ValidInputs","avgt",1,20,151323734.393393,14448718.504146,"ns/op"

@@ -1,0 +1,11 @@
+Body
+"2024-12-23 01:28:49,010 [pool-32-thread-5] DE LoyaltyDetailsKafkaConsumer-Recieved kafka message {""loyaltyInfo"":{""superUserImageUrl"":false,""rmMobile"":""N/A"",""goalClubName"":""Diamond"",""rmEmail"":""N/A"",""currentClubRetened"":false,""goalclubId"":5,""vipLoyaltyPoints"":878,""rmName"":""N/A"",""currentClubName"":""Gold"",""currentClubID"":4,""vipUser"":false,""firstCashGame"":false,""curRewardPoints"":298,""clubValidity"":""Jan, 2025"",""curLoyaltyPoints"":498},""userId"":112165808} 
+"
+"2024-12-23 01:28:49,010 [gameplaysystem-gameplaysystem-dispatcher-16] DE LoyaltyDetailsHandler-msg recvied arg
+"
+"2024-12-23 01:28:49,010 [gameplaysystem-gameplaysystem-dispatcher-16] DE LoyaltyDetailsHandler-msg recvied in process =LoyaltyDetailsVO [userId=10515207, loyaltyInfo=LoyaltyInfoVO [currentClubID=4, currentClubName=Gold, goalClubName=Diamond, goalclubId=5, clubValidity=Jan, 2025, curLoyaltyPoints=506, vipLoyaltyPoints=1493, curRewardPoints=43, vipUser=false, superUserImageUrl=false, rmName=N/A, rmMobile=N/A, rmEmail=N/A, firstCashGame=false, rmLoginId=null, currentClubRetened=false]],
+"
+"2024-12-23 01:28:49,010 [gameplaysystem-gameplaysystem-dispatcher-39] DE LoyaltyDetailsHandler-msg recvied arg
+"
+"2024-12-23 01:28:49,010 [gameplaysystem-gameplaysystem-dispatcher-39] DE LoyaltyDetailsHandler-msg recvied in process =LoyaltyDetailsVO [userId=112165808, loyaltyInfo=LoyaltyInfoVO [currentClubID=4, currentClubName=Gold, goalClubName=Diamond, goalclubId=5, clubValidity=Jan, 2025, curLoyaltyPoints=498, vipLoyaltyPoints=878, curRewardPoints=298, vipUser=false, superUserImageUrl=false, rmName=N/A, rmMobile=N/A, rmEmail=N/A, firstCashGame=false, rmLoginId=null, currentClubRetened=false]],
+"

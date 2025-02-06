@@ -17,6 +17,15 @@ public interface JsonParserInterface {
     boolean hasJsonKey(String json, String key);
 
     /**
+     * Extract a value from JSON using a path
+     * Similar to ClickHouse's JSON_VALUE function
+     * @param json Input JSON string
+     * @param path Path to the value (e.g. "$.store.book[0].title" or "$.hello")
+     * @return The extracted value as a string, or empty string if not found
+     */
+    String getJsonValue(String json, String path);
+
+    /**
      * Get parser name for benchmarking
      * @return Parser name
      */
