@@ -1,35 +1,90 @@
 package com.benchmark.parser;
 
-import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.JSONPath;
+import com.alibaba.fastjson2.JSONReader;
 
 public class FastJsonStreamingParser implements JsonParserInterface {
     
+    private static final JSONReader.Feature[] STRICT_FEATURES = new JSONReader.Feature[] {
+        JSONReader.Feature.IgnoreNoneSerializable,
+        JSONReader.Feature.ErrorOnNoneSerializable
+    };
+
     @Override
     public boolean isValidJson(String json) {
         if (json == null || json.trim().isEmpty()) {
             return false;
         }
         
-        // Check for common invalid JSON patterns
         String trimmed = json.trim();
-        if (trimmed.contains("'") || // Single quotes
-            trimmed.contains("undefined") || // JavaScript undefined
-            trimmed.endsWith(",}") || // Trailing comma in object
-            trimmed.endsWith(",]") || // Trailing comma in array
-            trimmed.matches(".*[^\\\\]'.*") || // Unescaped single quotes
-            (trimmed.startsWith("\"") && trimmed.endsWith("\"")) || // Just a string
-            (!trimmed.startsWith("{") && !trimmed.startsWith("[")) || // Must be object or array
-            trimmed.contains(":.") || // Missing value after colon
-            trimmed.contains(",,")) { // Double comma
+        // Quick validation - must start with { or [
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+            return false;
+        }
+        
+        // Quick validation - no single quotes allowed
+        if (trimmed.contains("'")) {
+            return false;
+        }
+        
+        // Quick validation - no trailing commas
+        if (trimmed.matches(".*,\\s*[}\\]]")) {
             return false;
         }
         
         try {
-            JSON.parse(json);
-            return true;
+            JSONReader reader = JSONReader.of(json);
+            reader.getContext().config(STRICT_FEATURES);
+            
+            // For objects, verify each key-value pair
+            if (trimmed.startsWith("{")) {
+                if (!reader.nextIfMatch('{')) {
+                    return false;
+                }
+                
+                // Handle empty object
+                if (reader.nextIfMatch('}')) {
+                    return true;
+                }
+                
+                while (true) {
+                    // Must have a field name
+                    String fieldName = reader.readFieldName();
+                    if (fieldName == null) {
+                        return false;
+                    }
+                    
+                    // Must have a value (null is allowed)
+                    try {
+                        reader.readAny();
+                    } catch (Exception e) {
+                        return false;
+                    }
+                    
+                    // Check for end of object or next field
+                    if (reader.nextIfMatch('}')) {
+                        return reader.isEnd();
+                    }
+                    if (!reader.nextIfMatch(',')) {
+                        return false;
+                    }
+                }
+            }
+            
+            // For arrays, verify each value
+            if (trimmed.startsWith("[")) {
+                // Read the array and validate it
+                try {
+                    reader.readArray();
+                    return reader.isEnd();
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+            
+            return false;
         } catch (JSONException e) {
             return false;
         }
@@ -38,8 +93,19 @@ public class FastJsonStreamingParser implements JsonParserInterface {
     @Override
     public boolean hasJsonKey(String json, String key) {
         try {
-            JSONObject obj = JSON.parseObject(json);
-            return obj != null && obj.containsKey(key);
+            JSONReader reader = JSONReader.of(json);
+            reader.getContext().config(STRICT_FEATURES);
+            
+            if (reader.nextIfMatch('{')) {
+                while (reader.nextIfMatch(',') || !reader.nextIfMatch('}')) {
+                    String fieldName = reader.readFieldName();
+                    if (key.equals(fieldName)) {
+                        return true;
+                    }
+                    reader.skipValue();
+                }
+            }
+            return false;
         } catch (Exception e) {
             return false;
         }
@@ -48,8 +114,20 @@ public class FastJsonStreamingParser implements JsonParserInterface {
     @Override
     public String getJsonValue(String json, String path) {
         try {
-            Object value = JSONPath.extract(json, path);
-            return value == null ? "" : value.toString();
+            JSONReader reader = JSONReader.of(json);
+            reader.getContext().config(STRICT_FEATURES);
+            
+            if (reader.nextIfMatch('{')) {
+                while (reader.nextIfMatch(',') || !reader.nextIfMatch('}')) {
+                    String fieldName = reader.readFieldName();
+                    if (path.equals(fieldName)) {
+                        Object value = reader.readAny();
+                        return value == null ? "" : value.toString();
+                    }
+                    reader.skipValue();
+                }
+            }
+            return "";
         } catch (Exception e) {
             return "";
         }
