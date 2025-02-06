@@ -1,4 +1,4 @@
-# Parquet files
+# Specific parquet files to ignore
 data/input.parquet
 
 # IDE files
@@ -7,3 +7,10 @@ data/input.parquet
 
 # Build output
 target/
+*.jar
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
