@@ -7,6 +7,7 @@ import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryAxis;
 import org.jfree.chart.axis.CategoryLabelPositions;
+import org.jfree.chart.axis.LogAxis;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PlotOrientation;
@@ -15,12 +16,18 @@ import org.jfree.chart.renderer.category.LineAndShapeRenderer;
 import org.jfree.chart.renderer.category.StandardBarPainter;
 import org.jfree.chart.title.LegendTitle;
 import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.ui.RectangleEdge;  // Updated import
 import org.openjdk.jmh.results.RunResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,21 +43,71 @@ public class ResultVisualizer {
     private static final Logger logger = LoggerFactory.getLogger(ResultVisualizer.class);
     private static final int CHART_WIDTH = 1600;
     private static final int CHART_HEIGHT = 900;
-    private static final Color BACKGROUND_COLOR = new Color(245, 245, 245);
-    private static final Color VALID_COLOR = new Color(46, 139, 87);  // SeaGreen
-    private static final Color INVALID_COLOR = new Color(220, 20, 60);  // Crimson
-    private static final Color[] SERIES_COLORS = {
-        VALID_COLOR,  // Blue
-        INVALID_COLOR,   // Red
-        new Color(39, 174, 96),   // Green
-        new Color(142, 68, 173)   // Purple
+
+    // Parser colors - using a more distinct color palette
+    private static final Color[] PARSER_COLORS = {
+        new Color(41, 128, 185),  // Blue (Jackson)
+        new Color(39, 174, 96),   // Green (GSON)
+        new Color(192, 57, 43),   // Red (FastJSON)
+        new Color(142, 68, 173)  // Purple (JsonIterator)
     };
+
+    // Task type patterns
+    private static final float[][] TASK_PATTERNS = {
+        {10.0f, 0.0f},           // Solid (Valid JSON)
+        {6.0f, 6.0f},            // Hatched (Invalid JSON)
+        {2.0f, 2.0f, 5.0f, 2.0f} // Dash-dot (Key Check)
+    };
+
+    private static final Map<String, String> METHOD_ALIASES = new HashMap<String, String>() {{
+        put("domIsValidJson_ValidInputs", "Jackson DOM (Valid)");
+        put("domIsValidJson_InvalidInputs", "Jackson DOM (Invalid)");
+        put("domHasJsonKey_ValidInputs", "Jackson DOM (Key Check)");
+        put("streamingIsValidJson_ValidInputs", "Jackson Streaming (Valid)");
+        put("streamingIsValidJson_InvalidInputs", "Jackson Streaming (Invalid)");
+        put("streamingHasJsonKey_ValidInputs", "Jackson Streaming (Key Check)");
+        put("gsonDomIsValidJson_ValidInputs", "GSON DOM (Valid)");
+        put("gsonDomIsValidJson_InvalidInputs", "GSON DOM (Invalid)");
+        put("gsonDomHasJsonKey_ValidInputs", "GSON DOM (Key Check)");
+        put("gsonStreamingIsValidJson_ValidInputs", "GSON Streaming (Valid)");
+        put("gsonStreamingIsValidJson_InvalidInputs", "GSON Streaming (Invalid)");
+        put("gsonStreamingHasJsonKey_ValidInputs", "GSON Streaming (Key Check)");
+        put("fastjsonDomIsValidJson_ValidInputs", "FastJSON DOM (Valid)");
+        put("fastjsonDomIsValidJson_InvalidInputs", "FastJSON DOM (Invalid)");
+        put("fastjsonDomHasJsonKey_ValidInputs", "FastJSON DOM (Key Check)");
+        put("fastjsonStreamingIsValidJson_ValidInputs", "FastJSON Streaming (Valid)");
+        put("fastjsonStreamingIsValidJson_InvalidInputs", "FastJSON Streaming (Invalid)");
+        put("fastjsonStreamingHasJsonKey_ValidInputs", "FastJSON Streaming (Key Check)");
+        put("jsoniterIsValidJson_ValidInputs", "JsonIterator (Valid)");
+        put("jsoniterIsValidJson_InvalidInputs", "JsonIterator (Invalid)");
+        put("jsoniterHasJsonKey_ValidInputs", "JsonIterator (Key Check)");
+    }};
+
+    private static String getMethodAlias(String methodName) {
+        return METHOD_ALIASES.getOrDefault(methodName, methodName);
+    }
+
+    private static int getParserColorIndex(String methodName) {
+        if (methodName.toLowerCase().contains("jackson")) return 0;
+        if (methodName.toLowerCase().contains("gson")) return 1;
+        if (methodName.toLowerCase().contains("fastjson")) return 2;
+        if (methodName.toLowerCase().contains("jsoniter")) return 3;
+        return 0; // Default color
+    }
+
+    private static float[] getTaskPattern(String methodName) {
+        if (methodName.toLowerCase().contains("_valid")) return TASK_PATTERNS[0];
+        if (methodName.toLowerCase().contains("_invalid")) return TASK_PATTERNS[1];
+        if (methodName.toLowerCase().contains("hasjsonkey")) return TASK_PATTERNS[2];
+        return TASK_PATTERNS[0]; // Default to solid line
+    }
 
     public static void createCharts(Collection<RunResult> results) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
         Path resultsDir = Paths.get("data", "results", timestamp);
         try {
             Files.createDirectories(resultsDir);
+            logger.info("Created results directory: {}", resultsDir);
         } catch (IOException e) {
             logger.error("Failed to create results directory: {}", e.getMessage());
             return;
@@ -67,52 +124,46 @@ public class ResultVisualizer {
             int rowCount = Integer.parseInt(result.getParams().getParam("rowCount"));
             double score = result.getPrimaryResult().getScore();
 
-            if (method.contains("IsValidJson")) {
-                datasets.get("validation_time").addValue(score, method, String.valueOf(rowCount));
-            } else if (method.contains("HasJsonKey")) {
-                datasets.get("key_check_time").addValue(score, method, String.valueOf(rowCount));
+            logger.info("Processing benchmark result: method={}, rowCount={}, score={}", method, rowCount, score);
+
+            if (method.toLowerCase().contains("isvalidjson")) {
+                datasets.get("validation_time").addValue(score, getMethodAlias(method), String.valueOf(rowCount));
+                logger.info("Added to validation_time dataset: {}", method);
+            } else if (method.toLowerCase().contains("hasjsonkey")) {
+                datasets.get("key_check_time").addValue(score, getMethodAlias(method), String.valueOf(rowCount));
+                logger.info("Added to key_check_time dataset: {}", method);
+            } else {
+                logger.warn("Benchmark method {} did not match any known patterns", method);
             }
         }
 
-        // Extract validation counts from the first result
-        int validCount = -1;
-        int keyCount = -1;
-        for (RunResult result : results) {
-            String benchmark = result.getParams().getBenchmark();
-            if (benchmark.contains("jacksonDomIsValidJson")) {
-                validCount = (int) result.getPrimaryResult().getScore();
-            } else if (benchmark.contains("jacksonDomHasJsonKey")) {
-                keyCount = (int) result.getPrimaryResult().getScore();
-            }
-        }
+        // Create and save charts for each dataset
+        for (Map.Entry<String, DefaultCategoryDataset> entry : datasets.entrySet()) {
+            String datasetName = entry.getKey();
+            DefaultCategoryDataset dataset = entry.getValue();
+            String title = datasetName.equals("validation_time") ? 
+                "JSON Validation Time by Parser and Input Size" :
+                "JSON Key Check Time by Parser and Input Size";
 
-        // Create and save charts
-        String fullValidationTitle = "JSON Validation Time by Method";
-        String fullKeyCheckTitle = "JSON Key Check Time by Method";
-        if (validCount >= 0 && keyCount >= 0) {
-            fullValidationTitle += String.format(" (Valid: %d, With Key: %d)", validCount, keyCount);
-            fullKeyCheckTitle += String.format(" (Valid: %d, With Key: %d)", validCount, keyCount);
+            // Bar charts (normal and log scale)
+            createBarChart(dataset, title, 
+                Paths.get(resultsDir.toString(), datasetName + "_bar.png").toString(), false);
+            createBarChart(dataset, title + " (Log Scale)", 
+                Paths.get(resultsDir.toString(), datasetName + "_bar_log.png").toString(), true);
+
+            // Line charts (normal and log scale)
+            createLineChart(dataset, title,
+                Paths.get(resultsDir.toString(), datasetName + "_line.png").toString(), false);
+            createLineChart(dataset, title + " (Log Scale)",
+                Paths.get(resultsDir.toString(), datasetName + "_line_log.png").toString(), true);
         }
-        createBarChart(datasets.get("validation_time"), 
-            fullValidationTitle, 
-            resultsDir.resolve("validation_time_bar.png").toString());
-        createLineChart(datasets.get("validation_time"),
-            "JSON Validation Time Trend",
-            resultsDir.resolve("validation_time_line.png").toString());
-            
-        createBarChart(datasets.get("key_check_time"),
-            fullKeyCheckTitle,
-            resultsDir.resolve("key_check_time_bar.png").toString());
-        createLineChart(datasets.get("key_check_time"),
-            "JSON Key Check Time Trend",
-            resultsDir.resolve("key_check_time_line.png").toString());
     }
 
-    private static void createBarChart(DefaultCategoryDataset dataset, String title, String outputPath) {
+    private static void createBarChart(DefaultCategoryDataset dataset, String title, String outputPath, boolean useLogScale) {
         JFreeChart chart = ChartFactory.createBarChart(
             title,
-            "Input Size (rows)",
-            "Time (ms)",
+            "Input Size (number of JSON objects)",
+            "Time per Operation (ms)",
             dataset,
             PlotOrientation.VERTICAL,
             true,
@@ -123,23 +174,42 @@ public class ResultVisualizer {
         CategoryPlot plot = chart.getCategoryPlot();
         customizePlot(plot);
 
-        // Customize bars
-        BarRenderer renderer = new BarRenderer();
-        renderer.setBarPainter(new StandardBarPainter());
-        renderer.setShadowVisible(false);
-        for (int i = 0; i < SERIES_COLORS.length; i++) {
-            renderer.setSeriesPaint(i, SERIES_COLORS[i]);
+        if (useLogScale) {
+            LogAxis logAxis = new LogAxis("Time per Operation (ms)");
+            logAxis.setBase(10);
+            plot.setRangeAxis(logAxis);
         }
-        plot.setRenderer(renderer);
+
+        // Customize renderer
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setBarPainter(new StandardBarPainter());
+        
+        int seriesCount = plot.getDataset().getRowCount();
+        for (int i = 0; i < seriesCount; i++) {
+            String methodName = plot.getDataset().getRowKey(i).toString();
+            int colorIndex = getParserColorIndex(methodName);
+            float[] pattern = getTaskPattern(methodName);
+            
+            renderer.setSeriesPaint(i, PARSER_COLORS[colorIndex]);
+            if (pattern == TASK_PATTERNS[1]) {
+                renderer.setSeriesOutlinePaint(i, PARSER_COLORS[colorIndex]);
+                renderer.setSeriesOutlineStroke(i, new BasicStroke(2.0f));
+                renderer.setSeriesShape(i, new Rectangle2D.Double(-4.0, -4.0, 8.0, 8.0));
+                renderer.setSeriesStroke(i, new BasicStroke(
+                    2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+                    1.0f, new float[] {6.0f, 6.0f}, 0.0f
+                ));
+            }
+        }
 
         saveChart(chart, outputPath);
     }
 
-    private static void createLineChart(DefaultCategoryDataset dataset, String title, String outputPath) {
+    private static void createLineChart(DefaultCategoryDataset dataset, String title, String outputPath, boolean useLogScale) {
         JFreeChart chart = ChartFactory.createLineChart(
             title,
-            "Input Size (rows)",
-            "Time (ms)",
+            "Input Size (number of JSON objects)",
+            "Time per Operation (ms)",
             dataset,
             PlotOrientation.VERTICAL,
             true,
@@ -150,55 +220,49 @@ public class ResultVisualizer {
         CategoryPlot plot = chart.getCategoryPlot();
         customizePlot(plot);
 
-        // Customize lines
-        LineAndShapeRenderer renderer = new LineAndShapeRenderer();
-        renderer.setDefaultShapesVisible(true);
-        renderer.setDefaultStroke(new BasicStroke(2.0f));
-        for (int i = 0; i < SERIES_COLORS.length; i++) {
-            renderer.setSeriesPaint(i, SERIES_COLORS[i]);
-            if (i == 0) {
-                renderer.setSeriesStroke(i, new BasicStroke(2.0f));
-            } else if (i == 1) {
-                renderer.setSeriesStroke(i, new BasicStroke(
-                    2.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 
-                    10.0f, new float[]{10.0f, 5.0f}, 0.0f
-                ));
-            } else {
-                renderer.setSeriesStroke(i, new BasicStroke(2.0f));
-            }
-            renderer.setSeriesShape(i, new Ellipse2D.Double(-4.0, -4.0, 8.0, 8.0));
+        if (useLogScale) {
+            LogAxis logAxis = new LogAxis("Time per Operation (ms)");
+            logAxis.setBase(10);
+            plot.setRangeAxis(logAxis);
         }
-        plot.setRenderer(renderer);
+
+        // Make lines thicker and add markers
+        LineAndShapeRenderer renderer = (LineAndShapeRenderer) plot.getRenderer();
+        renderer.setDefaultStroke(new BasicStroke(2.0f));
+        renderer.setDefaultShapesVisible(true);
+        renderer.setAutoPopulateSeriesShape(false);
+        renderer.setDefaultShape(new Ellipse2D.Double(-3, -3, 6, 6));
 
         saveChart(chart, outputPath);
     }
 
     private static void customizePlot(CategoryPlot plot) {
-        // Set background
-        plot.setBackgroundPaint(BACKGROUND_COLOR);
-        plot.setRangeGridlinePaint(Color.DARK_GRAY);
-        plot.setRangeGridlineStroke(new BasicStroke(0.5f));
-        plot.setDomainGridlinesVisible(false);
+        // Set background to white (no background color)
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setDomainGridlinePaint(new Color(200, 200, 200));
+        plot.setRangeGridlinePaint(new Color(200, 200, 200));
 
-        // Customize axes
+        // Customize domain axis (x-axis)
         CategoryAxis domainAxis = plot.getDomainAxis();
         domainAxis.setCategoryLabelPositions(CategoryLabelPositions.UP_45);
         domainAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 14));
         domainAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 12));
 
+        // Customize range axis (y-axis)
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 14));
         rangeAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 12));
-        rangeAxis.setStandardTickUnits(NumberAxis.createStandardTickUnits());
 
         // Customize legend
         LegendTitle legend = plot.getChart().getLegend();
-        legend.setBackgroundPaint(BACKGROUND_COLOR);
         legend.setItemFont(new Font("SansSerif", Font.PLAIN, 12));
+        legend.setBackgroundPaint(Color.WHITE);
+        legend.setBorder(1.0, 1.0, 1.0, 1.0);
+        legend.setPadding(10, 10, 10, 10);
+        legend.setPosition(RectangleEdge.BOTTOM); // Set legend position to bottom
     }
 
     private static void saveChart(JFreeChart chart, String outputPath) {
-        chart.setBackgroundPaint(BACKGROUND_COLOR);
         chart.getTitle().setFont(new Font("SansSerif", Font.BOLD, 18));
 
         try {

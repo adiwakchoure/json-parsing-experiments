@@ -15,38 +15,33 @@ public class DataLoader {
     private static final String VALID_JSON_FILE = "data/100k_valid_json.parquet";
     private static final String INVALID_JSON_FILE = "data/100k_invalid_json.parquet";
 
-    public static List<String> loadValidJsonInputs(int count) {
-        return loadFromParquet(VALID_JSON_FILE, count);
-    }
-
-    public static List<String> loadInvalidJsonInputs(int count) {
-        return loadFromParquet(INVALID_JSON_FILE, count);
-    }
-
-    private static List<String> loadFromParquet(String file, int count) {
-        List<String> inputs = new ArrayList<>();
-        
+    public static List<String> loadJsonInputs(String parquetFile, int rowCount) {
+        List<String> jsonInputs = new ArrayList<>();
         try (DuckDBConnection conn = (DuckDBConnection) new DuckDBDriver().connect("jdbc:duckdb:", null)) {
-            String query = String.format(
-                "SELECT Body FROM read_parquet('%s') LIMIT %d",
-                file, count
-            );
+            String sql = String.format("SELECT Body FROM read_parquet('%s') LIMIT %d", parquetFile, rowCount);
+            ResultSet rs = conn.createStatement().executeQuery(sql);
             
-            ResultSet rs = conn.createStatement().executeQuery(query);
             while (rs.next()) {
                 String input = rs.getString("Body");
                 if (input != null && !input.trim().isEmpty()) {
-                    inputs.add(input);
+                    jsonInputs.add(input);
                 }
             }
             
-            logger.info("Loaded {} inputs from {}", inputs.size(), file);
-            
+            logger.info("Loaded {} inputs from {}", jsonInputs.size(), parquetFile);
         } catch (SQLException e) {
-            logger.error("Error loading data from {}: {}", file, e.getMessage());
+            logger.error("Error loading data from {}: {}", parquetFile, e.getMessage());
             throw new RuntimeException("Failed to load data", e);
         }
         
-        return inputs;
+        return jsonInputs;
+    }
+
+    public static List<String> loadValidJsonInputs(int count) {
+        return loadJsonInputs(VALID_JSON_FILE, count);
+    }
+
+    public static List<String> loadInvalidJsonInputs(int count) {
+        return loadJsonInputs(INVALID_JSON_FILE, count);
     }
 }
