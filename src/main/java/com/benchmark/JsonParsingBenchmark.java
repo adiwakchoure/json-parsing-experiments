@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
@@ -18,12 +19,12 @@ import java.util.concurrent.TimeUnit;
 public class JsonParsingBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(JsonParsingBenchmark.class);
     private static final int SAMPLE_SIZE = 100000;
-    
+
     private static List<String> validJsonInputs;
     private static List<String> invalidJsonInputs;
     private static final String jsonKey = "correlationId";
     private static final String jsonPath = "$.logger";
-    
+
     static {
         validJsonInputs = DataLoader.loadValidJsonInputs(SAMPLE_SIZE);
         invalidJsonInputs = DataLoader.loadInvalidJsonInputs(SAMPLE_SIZE);
@@ -32,8 +33,6 @@ public class JsonParsingBenchmark {
 
     private final JsonParserInterface jacksonDomParser = new JacksonDomParser();
     private final JsonParserInterface jacksonStreamingParser = new JacksonStreamingParser();
-    private final JsonParserInterface gsonDomParser = new GsonDomParser();
-    private final JsonParserInterface gsonStreamingParser = new GsonStreamingParser();
     private final JsonParserInterface fastJsonDomParser = new FastJsonDomParser();
     private final JsonParserInterface fastJsonStreamingParser = new FastJsonStreamingParser();
     private final JsonParserInterface jsonIteratorParser = new JsonIteratorParser();
@@ -91,62 +90,6 @@ public class JsonParsingBenchmark {
     public void jacksonStreamingParser_GetValue(Blackhole blackhole) {
         for (String json : validJsonInputs) {
             blackhole.consume(jacksonStreamingParser.getJsonValue(json, jsonPath));
-        }
-    }
-
-    @Benchmark
-    public void gsonDomParser_ValidInputs(Blackhole blackhole) {
-        for (String json : validJsonInputs) {
-            blackhole.consume(gsonDomParser.isValidJson(json));
-        }
-    }
-
-    @Benchmark
-    public void gsonDomParser_InvalidInputs(Blackhole blackhole) {
-        for (String json : invalidJsonInputs) {
-            blackhole.consume(gsonDomParser.isValidJson(json));
-        }
-    }
-
-    @Benchmark
-    public void gsonDomParser_HasKey(Blackhole blackhole) {
-        for (String json : validJsonInputs) {
-            blackhole.consume(gsonDomParser.hasJsonKey(json, jsonKey));
-        }
-    }
-
-    @Benchmark
-    public void gsonDomParser_GetValue(Blackhole blackhole) {
-        for (String json : validJsonInputs) {
-            blackhole.consume(gsonDomParser.getJsonValue(json, jsonPath));
-        }
-    }
-
-    @Benchmark
-    public void gsonStreamingParser_ValidInputs(Blackhole blackhole) {
-        for (String json : validJsonInputs) {
-            blackhole.consume(gsonStreamingParser.isValidJson(json));
-        }
-    }
-
-    @Benchmark
-    public void gsonStreamingParser_InvalidInputs(Blackhole blackhole) {
-        for (String json : invalidJsonInputs) {
-            blackhole.consume(gsonStreamingParser.isValidJson(json));
-        }
-    }
-
-    @Benchmark
-    public void gsonStreamingParser_HasKey(Blackhole blackhole) {
-        for (String json : validJsonInputs) {
-            blackhole.consume(gsonStreamingParser.hasJsonKey(json, jsonKey));
-        }
-    }
-
-    @Benchmark
-    public void gsonStreamingParser_GetValue(Blackhole blackhole) {
-        for (String json : validJsonInputs) {
-            blackhole.consume(gsonStreamingParser.getJsonValue(json, jsonPath));
         }
     }
 

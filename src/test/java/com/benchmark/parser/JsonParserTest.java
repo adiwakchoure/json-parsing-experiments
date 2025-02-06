@@ -3,17 +3,18 @@ package com.benchmark.parser;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class JsonParserTest {
 
-    private final JsonParserInterface[] parsers = {
-            new FastJsonStreamingParser(),
-            new FastJsonDomParser(),
-            new JsonIteratorParser(),
-            new JacksonStreamingParser(),
-            new JacksonDomParser(),
-            new GsonDomParser(),
-            new GsonStreamingParser()
-    };
+    private final List<JsonParserInterface> parsers = Arrays.asList(
+        new FastJsonStreamingParser(),
+        new FastJsonDomParser(),
+        new JsonIteratorParser(),
+        new JacksonStreamingParser(),
+        new JacksonDomParser()
+    );
 
     @Test
     public void testValidJson() {

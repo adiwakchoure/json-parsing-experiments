@@ -1,16 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.benchmark.parser.JsonParserTest
 -------------------------------------------------------------------------------
-Tests run: 4, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.207 s <<< FAILURE! -- in com.benchmark.parser.JsonParserTest
-com.benchmark.parser.JsonParserTest.testInvalidJson -- Time elapsed: 0.089 s <<< FAILURE!
-org.opentest4j.AssertionFailedError: GsonDomParser incorrectly validated invalid JSON: {"key": value} ==> expected: <false> but was: <true>
-	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
-	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
-	at org.junit.jupiter.api.AssertFalse.failNotFalse(AssertFalse.java:63)
-	at org.junit.jupiter.api.AssertFalse.assertFalse(AssertFalse.java:36)
-	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:239)
-	at com.benchmark.parser.JsonParserTest.testInvalidJson(JsonParserTest.java:65)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1597)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1597)
-
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.199 s -- in com.benchmark.parser.JsonParserTest
