@@ -1,0 +1,9 @@
+# Parquet files
+data/input.parquet
+
+# IDE files
+.idea/
+*.iml
+
+# Build output
+target/
