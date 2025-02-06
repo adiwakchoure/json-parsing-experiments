@@ -1,74 +1,113 @@
-# JSON Parser Benchmarking
+# JSON Parser Performance Benchmark Experiment
 
-A comprehensive benchmarking framework comparing popular Java JSON parsers.
+## Overview
+Goal is to compare the performance of various JSON parsing libraries in Java, focusing on the three key operations we need for last9 clickhouse queries:
+1. JSON Validation
+2. Key Existence Check
+3. Value Extraction by Path
 
-## Parsers Tested
+## Parsers Under Test
+Chose both DOM and Streaming implementations of the fastest/most popular JSON libraries from https://github.com/fabienrenaud/java-json-benchmark 
 
-### DOM-based Parsers
-- **Jackson ObjectMapper**: Full DOM parsing with tree traversal
-  - Pros: Easy to use, mature API
-  - Cons: Higher memory usage for large JSON
-- **GSON**: Google's JSON parser with object mapping
-  - Pros: Clean API, good for Java objects
-  - Cons: No streaming support
-- **FastJSON**: Alibaba's high-performance JSON library
-  - Pros: Very fast for small JSON
-  - Cons: Less mature than Jackson/GSON
-- **SimdJSON**: SIMD-accelerated parser (currently disabled)
-  - Pros: Hardware acceleration
-  - Cons: Requires JDK Vector API support
+1. **Jackson**
+   - DOM (ObjectMapper)
+   - Streaming (JsonParser)
 
-### Streaming Parsers
-- **Jackson JsonParser**: Event-based streaming parser
-  - Pros: Memory efficient, early exit
-  - Cons: More complex API
-- **FastJSON JSONReader**: Streaming implementation
-  - Pros: Fast, supports early exit
-  - Cons: Less documented API
-- **JsonIterator**: High-performance streaming parser
-  - Pros: Very fast for large JSON
-  - Cons: Limited documentation
+2. **GSON**
+   - DOM
+   - Streaming
 
-## Test Data
-- 100k valid JSON records
-- 100k invalid JSON records (log lines, malformed JSON)
-- Data stored in Parquet format
-- Loaded via DuckDB for efficiency
+3. **FastJSON 2.x** (https://www.iteye.com/blog/wenshao-1142031)
+   - DOM
+   - Streaming
 
-## Benchmark Types
+4. **JsonIter** (https://jsoniter.com/)
+   - DOM-based implementation
 
-Each parser is tested with three scenarios:
-1. `isValidJson` with valid inputs (best case)
-2. `isValidJson` with invalid inputs (error handling)
-3. `hasJsonKey` with valid inputs (key lookup)
+## Benchmark Configuration
 
-## Implementation Details
-
-- **JMH Settings**:
-  - Warmup: 2 iterations, 2s each
-  - Measurement: 3 iterations, 3s each
-  - Fork: 1
-  - Mode: Average Time (ms)
-
-- **Validation Modes**:
-  - Normal mode: Accepts any valid JSON value (string, number, boolean, null, object, array)
-  - Strict mode: Only accepts objects and arrays as valid JSON (`-p strictMode=true`)
-
-- **Optimizations**:
-  - Early exit on invalid JSON
-  - Proper resource cleanup
-  - Blackhole consumption
-  - Static parser instances
-
-## Running Benchmarks
-
-```bash
-# Run in normal mode (accepts all JSON values)
-mvn clean package
-java -jar target/benchmarks.jar
-
-# Run in strict mode (only objects/arrays)
-java -jar target/benchmarks.jar -p strictMode=true
+### JMH Settings
+```java
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@Fork(value = 2)
+@Warmup(iterations = 5, time = 1)
+@Measurement(iterations = 10, time = 1)
+@Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
 ```
 
-Results show average processing time in milliseconds. Lower is better.
+### Test Data
+- **Sample Size**: 100,000 JSON rows per test
+- **Data Sources**:
+  - Valid JSON inputs from last9 Parquet files (game logs)
+  - Invalid JSON inputs from last9 Parquet files
+- **Data Pattern**:
+  ```json
+  {
+    "correlationId": "gameplayed__X54ww__1734897498952",  // present in ~59% of records
+    "tm": "01:28:19.560",
+    "logger": "com.games24x7.offerservice.execution.step.RTSendToConsumer",
+    // ... other fields
+  }
+  ```
+- **Test Keys/Paths**:
+  - Key Check: "correlationId" (tests both presence and absence)
+  - Path Extraction: "$.logger" (tests value extraction and error handling)
+- **Data Distribution**:
+  - ~59% of records have correlationId (tests positive case)
+  - ~41% of records missing correlationId (tests negative case)
+  - This distribution helps evaluate both successful parsing and error handling
+
+## Test Cases
+
+For each parser, we run the following benchmarks:
+
+1. **JSON Validation Tests**
+   ```java
+   [parser]_ValidInputs()   // Tests isValidJson() with valid game logs
+   [parser]_InvalidInputs() // Tests isValidJson() with invalid JSON
+   ```
+
+2. **Key Check Test**
+   ```java
+   [parser]_HasKey()        // Tests hasJsonKey() with key "correlationId"
+   ```
+
+3. **Value Extraction Test**
+   ```java
+   [parser]_GetValue()      // Tests getJsonValue() with path "$.logger"
+   ```
+
+## Performance Optimizations
+1. **Early Exit Strategies**
+   - Fast-fail validation for invalid JSON
+   - Early return in key checking operations
+
+## Expected Outcomes
+The benchmark will help evaluate:
+1. Performance differences between DOM and streaming approaches
+2. Library-specific optimizations effectiveness
+3. Trade-offs between memory usage and parsing speed
+4. Impact of different JSON operations on performance
+
+> It might make sense to have different libraries for specific JSON operators.
+
+## JMH Setup and config
+```java
+@State(Scope.Benchmark)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@Fork(value = 2)
+@Warmup(iterations = 5, time = 1)
+@Measurement(iterations = 10, time = 1)
+@Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
+public class JsonParsingBenchmark {
+    private static final Logger logger = LoggerFactory.getLogger(JsonParsingBenchmark.class);
+    private static final int SAMPLE_SIZE = 100000;
+    
+    private static List<String> validJsonInputs;
+    private static List<String> invalidJsonInputs;
+    private static final String jsonKey = "correlationId";
+    private static final String jsonPath = "$.logger";
+
+```
